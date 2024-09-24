@@ -2,6 +2,8 @@ import argparse
 import os
 import git
 from openai import OpenAI
+import docker
+import shutil
 
 
 def call_chat_gpt(system_prompt, prompt, chatgpt_model="gpt-3.5-turbo"):
@@ -141,17 +143,7 @@ def port_parameter_file(file_path):
     return ported
 
 
-def main():
-    args = parse_args()
-
-    # Check if the source path exists
-    if not os.path.exists(args.source_path):
-        raise Exception(
-            f"Error: The specified source path does not exist: {args.source_path}"
-        )
-
-    switch_branch(args.source_path, "ros2")
-
+def generate(source_path):
     for file in iterate_files_in_directory(args.source_path):
         if os.path.basename(file) == "package.xml":
             ported_package_xml = port_package_xml(file)
@@ -180,7 +172,61 @@ def main():
                 f.write(ported)
         print(file)
 
-    # call_chat_gpt()
+
+def try_build_and_get_error(source_path):
+    context_path = os.path.dirname(os.path.abspath(__file__))
+    package_path = os.path.join(
+        context_path, "copy_targets", source_path.split("/")[-1]
+    )
+    if os.path.exists(package_path):
+        shutil.rmtree(package_path)
+    shutil.copytree(source_path, package_path)
+    client = docker.from_env()
+    try:
+        print("Building Docker image...")
+        tag = "ros2_ishoku_kun:latest"
+        image, logs = client.images.build(
+            path=context_path,
+            tag=tag,
+            rm=True,
+            forcerm=True,
+            buildargs={"PACKAGE_PATH": "copy_targets/" + source_path.split("/")[-1]},
+        )
+        for log in logs:
+            if "stream" in log:
+                print(log["stream"].strip())
+            if "error" in log:
+                print(f"Error: {log['error']}")
+
+        print(f"Image built successfully: {tag}")
+        return ""
+    except docker.errors.BuildError as e:
+        print(f"BuildError: {e}")
+        for log in e.build_log:
+            if "stream" in log:
+                print(log["stream"].strip())
+            if "error" in log:
+                print(f"Error: {log['error']}")
+        return e
+    except docker.errors.APIError as e:
+        print(f"APIError: {e}")
+
+
+def main():
+    args = parse_args()
+
+    # Check if the source path exists
+    if not os.path.exists(args.source_path):
+        raise Exception(
+            f"Error: The specified source path does not exist: {args.source_path}"
+        )
+
+    switch_branch(args.source_path, "ros2")
+    # generate(args.source_path)
+    error = try_build_and_get_error(args.source_path)
+    print("===============")
+    print(error)
+    print("===============")
 
 
 if __name__ == "__main__":
