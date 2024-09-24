@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "ros2-ishoku-kun"
+version = "0.1.0"
+description = ""
+authors = ["Masaya Kataoka <ms.kataoka@gmail.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openai = "^1.47.1"
+gitpython = "^3.1.43"
+
+[tool.poetry.scripts]
+ros2_ishoku_kun = "ros2_ishoku_kun.convert:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
