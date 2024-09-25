@@ -6,3 +6,6 @@ RUN rosdep update
 ARG PACKAGE_PATH
 COPY ${PACKAGE_PATH} .
 RUN rosdep install -iry --from-paths .
+WORKDIR ../
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/ros/humble/setup.bash && colcon build

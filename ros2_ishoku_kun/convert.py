@@ -144,7 +144,7 @@ def port_parameter_file(file_path):
 
 
 def generate(source_path):
-    for file in iterate_files_in_directory(args.source_path):
+    for file in iterate_files_in_directory(source_path):
         if os.path.basename(file) == "package.xml":
             ported_package_xml = port_package_xml(file)
             with open(file, "w") as f:
@@ -192,22 +192,28 @@ def try_build_and_get_error(source_path):
             forcerm=True,
             buildargs={"PACKAGE_PATH": "copy_targets/" + source_path.split("/")[-1]},
         )
+        error_message = ""
         for log in logs:
-            if "stream" in log:
-                print(log["stream"].strip())
-            if "error" in log:
-                print(f"Error: {log['error']}")
+            if 'stream' in log:
+                print(log['stream'].strip())
+            if 'errorDetail' in log:
+                error_detail = log['errorDetail']
+                error_message += f"Error: {error_detail.get('message', '')}\n"
+                print(f"Error: {error_detail.get('message', '')}")
 
         print(f"Image built successfully: {tag}")
-        return ""
+        return error_message
     except docker.errors.BuildError as e:
         print(f"BuildError: {e}")
+        error_message = "BuildError occurred:\n"
         for log in e.build_log:
-            if "stream" in log:
-                print(log["stream"].strip())
-            if "error" in log:
-                print(f"Error: {log['error']}")
-        return e
+            if 'stream' in log:
+                print(log['stream'].strip())
+            if 'errorDetail' in log:
+                error_detail = log['errorDetail']
+                error_message += f"Error: {error_detail.get('message', '')}\n"
+                print(f"Error: {error_detail.get('message', '')}")
+        return error_message
     except docker.errors.APIError as e:
         print(f"APIError: {e}")
 
